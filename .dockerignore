@@ -1,0 +1,29 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+stockalpha-env/
+
+# IDE
+.idea/
+.vscode/
+
+# Tests and docs
+tests/
+docs/
+notebooks/
+
+# Local data
+data/
+logs/
+
+# Misc
+.DS_Store
