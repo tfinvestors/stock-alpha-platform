@@ -2,23 +2,25 @@ from datetime import datetime
 from typing import Any, Dict
 
 from sqlalchemy import Column, DateTime, Integer
-from sqlalchemy.ext.declarative import as_declarative, declared_attr
+from sqlalchemy.ext.declarative import declared_attr
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
-@as_declarative()
-class Base:
+class Base(DeclarativeBase):
     """Base class for all database models"""
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
 
     @declared_attr
-    def __tablename__(cls) -> str:
+    def __tablename__(cls) -> Mapped[str]:  # ✅ Fix: Explicitly define Mapped[str]
         """Generate __tablename__ automatically from class name"""
-        return type(
-            cls
-        ).__name__.lower()  # ✅ Use `type(cls).__name__` instead of `cls.__name__`
+        return mapped_column(
+            default=cls.__name__.lower()
+        )  # ⬅️ Corrected SQLAlchemy ORM mapping
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert model instance to dictionary"""

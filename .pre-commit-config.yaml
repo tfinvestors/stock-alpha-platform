@@ -21,4 +21,6 @@ repos:
   rev: v1.15.0
   hooks:
     - id: mypy
-      additional_dependencies: [types-requests]
+      additional_dependencies:
+        - types-PyYAML
+      args: ["--python-version=3.11", "--python-executable=python", "--namespace-packages"]
