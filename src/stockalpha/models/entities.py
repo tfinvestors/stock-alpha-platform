@@ -69,6 +69,7 @@ class PriceData(Base):
     close = Column(Float)
     adjusted_close = Column(Float)
     volume = Column(Float)
+    __table_args__ = (Index("idx_company_date", "company_id", "date", unique=True),)
 
     # Relationships
     company = relationship("Company", back_populates="price_data")
