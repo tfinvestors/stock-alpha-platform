@@ -4,6 +4,7 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from stockalpha.api.middleware import add_middleware
 from stockalpha.api.routes import (
     announcement,
     backtest,
@@ -39,6 +40,9 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    # Add custom middleware
+    add_middleware(app)
+
     # Include API routes
     app.include_router(
         company.router, prefix=settings.api_v1_prefix, tags=["Companies"]
@@ -60,7 +64,23 @@ def create_app() -> FastAPI:
     @app.get("/health", tags=["Health"])
     async def health_check():
         """Health check endpoint"""
-        return {"status": "healthy"}
+        return {"status": "healthy", "environment": settings.environment}
+
+    @app.on_event("startup")
+    async def startup_event():
+        logger.info("Application starting up...")
+
+        # Initialize database if configured
+        if settings.yaml_config.get("system", {}).get(
+            "create_tables_on_startup", False
+        ):
+            from stockalpha.utils.database import init_db
+
+            init_db()
+
+    @app.on_event("shutdown")
+    async def shutdown_event():
+        logger.info("Application shutting down...")
 
     return app
 
