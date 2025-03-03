@@ -6,19 +6,21 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from stockalpha.api.schemas import SignalCreate, SignalRead
-from stockalpha.repositories import get_company_repository, get_signal_repository
+from stockalpha.repositories import get_repository
+from stockalpha.repositories.company_repository import CompanyRepository
+from stockalpha.repositories.signal_repository import SignalRepository
 from stockalpha.utils.database import get_db
 
 router = APIRouter()
 
 
-# Dependencies for repositories
+# Repository dependencies
 def get_signal_repo():
-    return get_signal_repository()
+    return get_repository(SignalRepository)
 
 
 def get_company_repo():
-    return get_company_repository()
+    return get_repository(CompanyRepository)
 
 
 @router.post("/signals/", response_model=SignalRead)

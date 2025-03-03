@@ -6,22 +6,23 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from stockalpha.api.schemas import FundamentalDataCreate, FundamentalDataRead
-from stockalpha.repositories import (
-    get_company_repository,
-    get_fundamental_data_repository,
+from stockalpha.repositories import get_repository
+from stockalpha.repositories.company_repository import CompanyRepository
+from stockalpha.repositories.fundamental_data_repository import (
+    FundamentalDataRepository,
 )
 from stockalpha.utils.database import get_db
 
 router = APIRouter()
 
 
-# Dependencies for repositories
+# Repository dependencies
 def get_fundamental_repo():
-    return get_fundamental_data_repository()
+    return get_repository(FundamentalDataRepository)
 
 
 def get_company_repo():
-    return get_company_repository()
+    return get_repository(CompanyRepository)
 
 
 @router.post("/fundamentals/", response_model=FundamentalDataRead)

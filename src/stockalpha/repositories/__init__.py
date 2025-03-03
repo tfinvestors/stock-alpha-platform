@@ -1,9 +1,6 @@
 # src/stockalpha/repositories/__init__.py
 import logging
-from functools import lru_cache
 from typing import Type, TypeVar
-
-from fastapi import Depends
 
 from stockalpha.repositories.announcement_repository import AnnouncementRepository
 from stockalpha.repositories.backtest_repository import BacktestRepository
@@ -32,16 +29,6 @@ def get_repository(repo_class: Type[RepoType]) -> RepoType:
     - Creates repository instances only when needed
     - Caches instances for reuse
     - Can be used with FastAPI's dependency injection
-
-    Example usage:
-        company_repo = get_repository(CompanyRepository)
-
-    Or with FastAPI:
-        @app.get("/companies/")
-        def read_companies(
-            repo = Depends(lambda: get_repository(CompanyRepository))
-        ):
-            ...
     """
     if repo_class not in _repositories:
         logger.debug(f"Creating new repository instance: {repo_class.__name__}")
@@ -50,7 +37,7 @@ def get_repository(repo_class: Type[RepoType]) -> RepoType:
     return _repositories[repo_class]
 
 
-# Convenience functions for commonly used repositories
+# Convenience functions for common repositories
 def get_company_repository() -> CompanyRepository:
     return get_repository(CompanyRepository)
 

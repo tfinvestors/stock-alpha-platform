@@ -6,15 +6,16 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from stockalpha.api.schemas import BacktestCreate, BacktestRead
-from stockalpha.repositories import get_backtest_repository
+from stockalpha.repositories import get_repository
+from stockalpha.repositories.backtest_repository import BacktestRepository
 from stockalpha.utils.database import get_db
 
 router = APIRouter()
 
 
-# Dependency for the backtest repository
+# Repository dependency
 def get_backtest_repo():
-    return get_backtest_repository()
+    return get_repository(BacktestRepository)
 
 
 @router.post("/backtests/", response_model=BacktestRead)

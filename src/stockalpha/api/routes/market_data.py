@@ -6,19 +6,21 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from stockalpha.api.schemas import DateRangeParams, PriceDataCreate, PriceDataRead
-from stockalpha.repositories import get_company_repository, get_price_data_repository
+from stockalpha.repositories import get_repository
+from stockalpha.repositories.company_repository import CompanyRepository
+from stockalpha.repositories.price_data_repository import PriceDataRepository
 from stockalpha.utils.database import get_db
 
 router = APIRouter()
 
 
-# Dependencies for repositories
+# Repository dependencies
 def get_price_repo():
-    return get_price_data_repository()
+    return get_repository(PriceDataRepository)
 
 
 def get_company_repo():
-    return get_company_repository()
+    return get_repository(CompanyRepository)
 
 
 @router.post("/market-data/", response_model=PriceDataRead)
@@ -52,10 +54,10 @@ def create_price_data(
 def create_price_data_batch(
     price_data_list: List[PriceDataCreate],
     db: Session = Depends(get_db),
-    price_repo=Depends(get_price_repo),
+    repo=Depends(get_price_repo),
 ):
     """Create multiple price data points in batch"""
-    return price_repo.create_batch(db, price_data_list=price_data_list)
+    return repo.create_batch(db, price_data_list=price_data_list)
 
 
 @router.get("/market-data/", response_model=List[PriceDataRead])
@@ -79,6 +81,7 @@ def list_price_data(
             limit=limit,
         )
     else:
+        # For general queries without company_id, use the model directly
         query = db.query(repo.model)
 
         if start_date:

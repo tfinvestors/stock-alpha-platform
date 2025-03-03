@@ -6,19 +6,21 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from stockalpha.api.schemas import AnnouncementCreate, AnnouncementRead
-from stockalpha.repositories import get_announcement_repository, get_company_repository
+from stockalpha.repositories import get_repository
+from stockalpha.repositories.announcement_repository import AnnouncementRepository
+from stockalpha.repositories.company_repository import CompanyRepository
 from stockalpha.utils.database import get_db
 
 router = APIRouter()
 
 
-# Dependencies for repositories
+# Repository dependencies
 def get_announcement_repo():
-    return get_announcement_repository()
+    return get_repository(AnnouncementRepository)
 
 
 def get_company_repo():
-    return get_company_repository()
+    return get_repository(CompanyRepository)
 
 
 @router.post("/announcements/", response_model=AnnouncementRead)
