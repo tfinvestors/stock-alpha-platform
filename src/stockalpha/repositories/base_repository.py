@@ -30,7 +30,13 @@ class BaseRepository(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
 
     def create(self, db: Session, *, obj_in: CreateSchemaType) -> ModelType:
         """Create new entry"""
-        obj_in_data = jsonable_encoder(obj_in)
+        try:
+            # Use model_dump for Pydantic v2
+            obj_in_data = obj_in.model_dump()
+        except AttributeError:
+            # Fall back to jsonable_encoder for compatibility or complex objects
+            obj_in_data = jsonable_encoder(obj_in)
+
         db_obj = self.model(**obj_in_data)
         db.add(db_obj)
         db.commit()

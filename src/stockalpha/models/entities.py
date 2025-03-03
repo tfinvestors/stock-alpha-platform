@@ -1,5 +1,15 @@
 # src/stockalpha/models/entities.py
-from sqlalchemy import JSON, Boolean, Column, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Column,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+)
 from sqlalchemy.orm import relationship
 from sqlalchemy.types import DateTime
 
@@ -35,6 +45,11 @@ class Announcement(Base):
     sub_categories = Column(JSON)
     sentiment_score = Column(Float)
     entities = Column(JSON)
+
+    __table_args__ = (
+        Index("idx_date_category", "date", "primary_category"),
+        Index("idx_company_date", "company_id", "date"),
+    )
 
     # Processing metadata
     processed = Column(Boolean, default=False)

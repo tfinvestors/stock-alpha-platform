@@ -82,6 +82,7 @@ class DateRangeParams(BaseModel):
 
 
 class AnnouncementQuery(DateRangeParams):
+    company_id: Optional[int] = Field(default=None, gt=0)
     category: Optional[str] = None
     sentiment_min: Optional[float] = None
     sentiment_max: Optional[float] = None
