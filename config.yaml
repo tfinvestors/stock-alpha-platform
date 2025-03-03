@@ -1,0 +1,68 @@
+# Stock Alpha Platform Configuration
+
+# Environment (development, staging, production)
+environment: development
+
+# Logging
+logging:
+  level: INFO
+  file: logs/app.log
+  format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+
+# Database
+database:
+  dialect: postgresql
+  driver: psycopg2
+  host: localhost
+  port: 5432
+  username: postgres
+  password: Omsairam@1922  # Be careful storing passwords in config files
+  database: stock_fundamentals
+
+# API Keys
+api_keys:
+  alpha_vantage: YOUR_KEY_HERE
+  financial_modeling_prep: YOUR_KEY_HERE
+  news_api: YOUR_KEY_HERE
+
+# Data Collection
+collection:
+  announcements:
+    max_age_days: 90
+    batch_size: 100
+    sources:
+      - sec_edgar
+      - news_api
+      - company_ir
+
+  market_data:
+    default_period: 1d
+    max_history_years: 5
+    providers:
+      - yfinance
+      - alpha_vantage
+
+  fundamental_data:
+    quarters_history: 20
+    update_frequency_days: 30
+
+# Analysis Settings
+analysis:
+  announcement_classification:
+    confidence_threshold: 0.7
+    use_ml_model: true
+    model_path: models/announcement_classifier.pkl
+
+  technical_analysis:
+    default_indicators:
+      - SMA:20
+      - SMA:50
+      - SMA:200
+      - RSI:14
+      - MACD:12:26:9
+
+# System
+system:
+  create_tables_on_startup: true
+  worker_threads: 4
+  cache_ttl_seconds: 3600
