@@ -97,5 +97,18 @@ class FundamentalData(Base):
     balance_sheet_data = Column(JSON)
     cash_flow_data = Column(JSON)
 
+    __table_args__ = (
+        Index("idx_company_fiscal", "company_id", "fiscal_year", "fiscal_quarter"),
+        # This unique constraint ensures we don't have duplicate entries
+        Index(
+            "idx_unique_fundamental",
+            "company_id",
+            "period",
+            "fiscal_year",
+            "fiscal_quarter",
+            unique=True,
+        ),
+    )
+
     # Relationships
     company = relationship("Company", back_populates="fundamental_data")
