@@ -1,5 +1,15 @@
 # src/stockalpha/models/signals.py
-from sqlalchemy import JSON, Boolean, Column, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Column,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+)
 from sqlalchemy.orm import relationship
 from sqlalchemy.types import DateTime
 
@@ -26,6 +36,14 @@ class Signal(Base):
         Integer, ForeignKey("announcement.id"), nullable=True
     )
     source_details = Column(JSON)
+
+    __table_args__ = (
+        Index("idx_company_date", "company_id", "date"),
+        Index("idx_confidence", "confidence"),
+        Index("idx_signal_type", "signal_type"),
+        # Composite index for common filtering patterns
+        Index("idx_signal_lookup", "company_id", "signal_type", "date"),
+    )
 
     # Relationships
     company = relationship("Company")
