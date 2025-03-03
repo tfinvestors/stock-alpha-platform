@@ -6,21 +6,25 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from stockalpha.api.schemas import BacktestCreate, BacktestRead
-from stockalpha.models.signals import Backtest, BacktestTrade
+from stockalpha.repositories import get_backtest_repository
 from stockalpha.utils.database import get_db
 
 router = APIRouter()
 
 
-@router.post("/backtests/", response_model=BacktestRead)
-def create_backtest(backtest: BacktestCreate, db: Session = Depends(get_db)):
-    """Create a new backtest"""
-    db_backtest = Backtest(**backtest.dict())
-    db.add(db_backtest)
-    db.commit()
-    db.refresh(db_backtest)
+# Dependency for the backtest repository
+def get_backtest_repo():
+    return get_backtest_repository()
 
-    return db_backtest
+
+@router.post("/backtests/", response_model=BacktestRead)
+def create_backtest(
+    backtest: BacktestCreate,
+    db: Session = Depends(get_db),
+    repo=Depends(get_backtest_repo),
+):
+    """Create a new backtest"""
+    return repo.create(db, obj_in=backtest)
 
 
 @router.get("/backtests/", response_model=List[BacktestRead])
@@ -30,23 +34,20 @@ def list_backtests(
     strategy_type: Optional[str] = None,
     min_return: Optional[float] = None,
     db: Session = Depends(get_db),
+    repo=Depends(get_backtest_repo),
 ):
     """List backtests with optional filtering"""
-    query = db.query(Backtest)
-
-    if strategy_type:
-        query = query.filter(Backtest.strategy_type == strategy_type)
-
-    if min_return is not None:
-        query = query.filter(Backtest.total_return >= min_return)
-
-    return query.order_by(Backtest.created_at.desc()).offset(skip).limit(limit).all()
+    return repo.get_filtered(
+        db, strategy_type=strategy_type, min_return=min_return, skip=skip, limit=limit
+    )
 
 
 @router.get("/backtests/{backtest_id}", response_model=BacktestRead)
-def get_backtest(backtest_id: int, db: Session = Depends(get_db)):
+def get_backtest(
+    backtest_id: int, db: Session = Depends(get_db), repo=Depends(get_backtest_repo)
+):
     """Get a backtest by ID"""
-    backtest = db.query(Backtest).filter(Backtest.id == backtest_id).first()
+    backtest = repo.get(db, id=backtest_id)
     if not backtest:
         raise HTTPException(status_code=404, detail="Backtest not found")
 
@@ -61,17 +62,15 @@ def run_backtest(
     end_date: datetime = Body(...),
     name: Optional[str] = Body(None),
     db: Session = Depends(get_db),
+    repo=Depends(get_backtest_repo),
 ):
     """Run a new backtest with specified parameters"""
-    # This would typically call your backtesting engine
-    # For now, we'll just create a placeholder record
-
     # Create a name if not provided
     if not name:
         name = f"{strategy_type} Backtest - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
 
     # Create backtest record
-    backtest = Backtest(
+    backtest = BacktestCreate(
         name=name,
         strategy_type=strategy_type,
         parameters=parameters,
@@ -86,32 +85,30 @@ def run_backtest(
         trades_count=0,
     )
 
-    db.add(backtest)
-    db.commit()
-    db.refresh(backtest)
-
-    return backtest
+    return repo.create(db, obj_in=backtest)
 
 
 @router.delete("/backtests/{backtest_id}", response_model=dict)
-def delete_backtest(backtest_id: int, db: Session = Depends(get_db)):
+def delete_backtest(
+    backtest_id: int, db: Session = Depends(get_db), repo=Depends(get_backtest_repo)
+):
     """Delete a backtest"""
-    backtest = db.query(Backtest).filter(Backtest.id == backtest_id).first()
+    backtest = repo.get(db, id=backtest_id)
     if not backtest:
         raise HTTPException(status_code=404, detail="Backtest not found")
 
-    db.delete(backtest)
-    db.commit()
-
+    repo.remove(db, id=backtest_id)
     return {"message": "Backtest deleted successfully"}
 
 
 @router.get("/backtests/compare/", response_model=List[BacktestRead])
 def compare_backtests(
-    backtest_ids: List[int] = Query(...), db: Session = Depends(get_db)
+    backtest_ids: List[int] = Query(...),
+    db: Session = Depends(get_db),
+    repo=Depends(get_backtest_repo),
 ):
     """Compare multiple backtests"""
-    backtests = db.query(Backtest).filter(Backtest.id.in_(backtest_ids)).all()
+    backtests = repo.get_multiple_by_ids(db, backtest_ids=backtest_ids)
 
     # Check if all backtests were found
     if len(backtests) != len(backtest_ids):

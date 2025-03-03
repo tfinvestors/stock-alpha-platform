@@ -6,29 +6,36 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from stockalpha.api.schemas import AnnouncementCreate, AnnouncementRead
-from stockalpha.models.entities import Announcement, Company
+from stockalpha.repositories import get_announcement_repository, get_company_repository
 from stockalpha.utils.database import get_db
 
 router = APIRouter()
 
 
+# Dependencies for repositories
+def get_announcement_repo():
+    return get_announcement_repository()
+
+
+def get_company_repo():
+    return get_company_repository()
+
+
 @router.post("/announcements/", response_model=AnnouncementRead)
 def create_announcement(
-    announcement: AnnouncementCreate, db: Session = Depends(get_db)
+    announcement: AnnouncementCreate,
+    db: Session = Depends(get_db),
+    announcement_repo=Depends(get_announcement_repo),
+    company_repo=Depends(get_company_repo),
 ):
     """Create a new announcement"""
     # Check if company exists
-    company = db.query(Company).filter(Company.id == announcement.company_id).first()
+    company = company_repo.get(db, id=announcement.company_id)
     if not company:
         raise HTTPException(status_code=404, detail="Company not found")
 
     # Create announcement
-    db_announcement = Announcement(**announcement.dict())
-    db.add(db_announcement)
-    db.commit()
-    db.refresh(db_announcement)
-
-    return db_announcement
+    return announcement_repo.create(db, obj_in=announcement)
 
 
 @router.get("/announcements/", response_model=List[AnnouncementRead])
@@ -40,31 +47,28 @@ def list_announcements(
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
     db: Session = Depends(get_db),
+    repo=Depends(get_announcement_repo),
 ):
     """List announcements with optional filtering"""
-    query = db.query(Announcement)
-
-    if company_id:
-        query = query.filter(Announcement.company_id == company_id)
-
-    if category:
-        query = query.filter(Announcement.primary_category == category)
-
-    if start_date:
-        query = query.filter(Announcement.date >= start_date)
-
-    if end_date:
-        query = query.filter(Announcement.date <= end_date)
-
-    return query.order_by(Announcement.date.desc()).offset(skip).limit(limit).all()
+    return repo.get_filtered(
+        db,
+        company_id=company_id,
+        category=category,
+        start_date=start_date,
+        end_date=end_date,
+        skip=skip,
+        limit=limit,
+    )
 
 
 @router.get("/announcements/{announcement_id}", response_model=AnnouncementRead)
-def get_announcement(announcement_id: int, db: Session = Depends(get_db)):
+def get_announcement(
+    announcement_id: int,
+    db: Session = Depends(get_db),
+    repo=Depends(get_announcement_repo),
+):
     """Get an announcement by ID"""
-    announcement = (
-        db.query(Announcement).filter(Announcement.id == announcement_id).first()
-    )
+    announcement = repo.get(db, id=announcement_id)
     if not announcement:
         raise HTTPException(status_code=404, detail="Announcement not found")
 
@@ -75,22 +79,20 @@ def get_announcement(announcement_id: int, db: Session = Depends(get_db)):
     "/companies/{company_id}/announcements/", response_model=List[AnnouncementRead]
 )
 def get_company_announcements(
-    company_id: int, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)
+    company_id: int,
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    announcement_repo=Depends(get_announcement_repo),
+    company_repo=Depends(get_company_repo),
 ):
     """Get all announcements for a specific company"""
     # Check if company exists
-    company = db.query(Company).filter(Company.id == company_id).first()
+    company = company_repo.get(db, id=company_id)
     if not company:
         raise HTTPException(status_code=404, detail="Company not found")
 
     # Get announcements
-    announcements = (
-        db.query(Announcement)
-        .filter(Announcement.company_id == company_id)
-        .order_by(Announcement.date.desc())
-        .offset(skip)
-        .limit(limit)
-        .all()
+    return announcement_repo.get_by_company(
+        db, company_id=company_id, skip=skip, limit=limit
     )
-
-    return announcements

@@ -6,28 +6,37 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from stockalpha.api.schemas import DateRangeParams, PriceDataCreate, PriceDataRead
-from stockalpha.models.entities import Company, PriceData
+from stockalpha.repositories import get_company_repository, get_price_data_repository
 from stockalpha.utils.database import get_db
 
 router = APIRouter()
 
 
+# Dependencies for repositories
+def get_price_repo():
+    return get_price_data_repository()
+
+
+def get_company_repo():
+    return get_company_repository()
+
+
 @router.post("/market-data/", response_model=PriceDataRead)
-def create_price_data(price_data: PriceDataCreate, db: Session = Depends(get_db)):
+def create_price_data(
+    price_data: PriceDataCreate,
+    db: Session = Depends(get_db),
+    price_repo=Depends(get_price_repo),
+    company_repo=Depends(get_company_repo),
+):
     """Create a new price data point"""
     # Check if company exists
-    company = db.query(Company).filter(Company.id == price_data.company_id).first()
+    company = company_repo.get(db, id=price_data.company_id)
     if not company:
         raise HTTPException(status_code=404, detail="Company not found")
 
     # Check if data already exists for this date
-    existing = (
-        db.query(PriceData)
-        .filter(
-            PriceData.company_id == price_data.company_id,
-            PriceData.date == price_data.date,
-        )
-        .first()
+    existing = price_repo.get_by_date(
+        db, company_id=price_data.company_id, date_value=price_data.date
     )
 
     if existing:
@@ -36,52 +45,17 @@ def create_price_data(price_data: PriceDataCreate, db: Session = Depends(get_db)
         )
 
     # Create price data
-    db_price_data = PriceData(**price_data.dict())
-    db.add(db_price_data)
-    db.commit()
-    db.refresh(db_price_data)
-
-    return db_price_data
+    return price_repo.create(db, obj_in=price_data)
 
 
 @router.post("/market-data/batch/", response_model=List[PriceDataRead])
 def create_price_data_batch(
-    price_data_list: List[PriceDataCreate], db: Session = Depends(get_db)
+    price_data_list: List[PriceDataCreate],
+    db: Session = Depends(get_db),
+    price_repo=Depends(get_price_repo),
 ):
     """Create multiple price data points in batch"""
-    results = []
-
-    for price_data in price_data_list:
-        # Check if company exists
-        company = db.query(Company).filter(Company.id == price_data.company_id).first()
-        if not company:
-            continue
-
-        # Check if data already exists for this date
-        existing = (
-            db.query(PriceData)
-            .filter(
-                PriceData.company_id == price_data.company_id,
-                PriceData.date == price_data.date,
-            )
-            .first()
-        )
-
-        if existing:
-            continue
-
-        # Create price data
-        db_price_data = PriceData(**price_data.dict())
-        db.add(db_price_data)
-        results.append(db_price_data)
-
-    db.commit()
-
-    # Refresh all instances
-    for result in results:
-        db.refresh(result)
-
-    return results
+    return price_repo.create_batch(db, price_data_list=price_data_list)
 
 
 @router.get("/market-data/", response_model=List[PriceDataRead])
@@ -92,20 +66,28 @@ def list_price_data(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     db: Session = Depends(get_db),
+    repo=Depends(get_price_repo),
 ):
     """List price data with optional filtering"""
-    query = db.query(PriceData)
-
     if company_id:
-        query = query.filter(PriceData.company_id == company_id)
+        return repo.get_by_company(
+            db,
+            company_id=company_id,
+            start_date=start_date,
+            end_date=end_date,
+            skip=skip,
+            limit=limit,
+        )
+    else:
+        query = db.query(repo.model)
 
-    if start_date:
-        query = query.filter(PriceData.date >= start_date)
+        if start_date:
+            query = query.filter(repo.model.date >= start_date)
 
-    if end_date:
-        query = query.filter(PriceData.date <= end_date)
+        if end_date:
+            query = query.filter(repo.model.date <= end_date)
 
-    return query.order_by(PriceData.date.desc()).offset(skip).limit(limit).all()
+        return query.order_by(repo.model.date.desc()).offset(skip).limit(limit).all()
 
 
 @router.get("/companies/{company_id}/market-data/", response_model=List[PriceDataRead])
@@ -113,6 +95,8 @@ def get_company_price_data(
     company_id: int,
     date_range: DateRangeParams = Depends(),
     db: Session = Depends(get_db),
+    price_repo=Depends(get_price_repo),
+    company_repo=Depends(get_company_repo),
 ):
     """Get price data for a specific company within a date range"""
     # Set default date range if not provided
@@ -120,20 +104,15 @@ def get_company_price_data(
     start_date = date_range.start_date or (end_date - timedelta(days=30))
 
     # Check if company exists
-    company = db.query(Company).filter(Company.id == company_id).first()
+    company = company_repo.get(db, id=company_id)
     if not company:
         raise HTTPException(status_code=404, detail="Company not found")
 
     # Get price data
-    price_data = (
-        db.query(PriceData)
-        .filter(
-            PriceData.company_id == company_id,
-            PriceData.date >= start_date,
-            PriceData.date <= end_date,
-        )
-        .order_by(PriceData.date)
-        .all()
+    return price_repo.get_by_company(
+        db,
+        company_id=company_id,
+        start_date=start_date,
+        end_date=end_date,
+        limit=1000,  # Higher limit for time series data
     )
-
-    return price_data

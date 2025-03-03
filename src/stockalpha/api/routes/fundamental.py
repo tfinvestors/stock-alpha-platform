@@ -6,32 +6,44 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from stockalpha.api.schemas import FundamentalDataCreate, FundamentalDataRead
-from stockalpha.models.entities import Company, FundamentalData
+from stockalpha.repositories import (
+    get_company_repository,
+    get_fundamental_data_repository,
+)
 from stockalpha.utils.database import get_db
 
 router = APIRouter()
 
 
+# Dependencies for repositories
+def get_fundamental_repo():
+    return get_fundamental_data_repository()
+
+
+def get_company_repo():
+    return get_company_repository()
+
+
 @router.post("/fundamentals/", response_model=FundamentalDataRead)
 def create_fundamental_data(
-    fundamental: FundamentalDataCreate, db: Session = Depends(get_db)
+    fundamental: FundamentalDataCreate,
+    db: Session = Depends(get_db),
+    fundamental_repo=Depends(get_fundamental_repo),
+    company_repo=Depends(get_company_repo),
 ):
     """Create a new fundamental data entry"""
     # Check if company exists
-    company = db.query(Company).filter(Company.id == fundamental.company_id).first()
+    company = company_repo.get(db, id=fundamental.company_id)
     if not company:
         raise HTTPException(status_code=404, detail="Company not found")
 
     # Check if data already exists for this period
-    existing = (
-        db.query(FundamentalData)
-        .filter(
-            FundamentalData.company_id == fundamental.company_id,
-            FundamentalData.period == fundamental.period,
-            FundamentalData.fiscal_year == fundamental.fiscal_year,
-            FundamentalData.fiscal_quarter == fundamental.fiscal_quarter,
-        )
-        .first()
+    existing = fundamental_repo.get_by_period(
+        db,
+        company_id=fundamental.company_id,
+        fiscal_year=fundamental.fiscal_year,
+        fiscal_quarter=fundamental.fiscal_quarter,
+        period=fundamental.period,
     )
 
     if existing:
@@ -40,12 +52,7 @@ def create_fundamental_data(
         )
 
     # Create fundamental data
-    db_fundamental = FundamentalData(**fundamental.dict())
-    db.add(db_fundamental)
-    db.commit()
-    db.refresh(db_fundamental)
-
-    return db_fundamental
+    return fundamental_repo.create(db, obj_in=fundamental)
 
 
 @router.get("/fundamentals/", response_model=List[FundamentalDataRead])
@@ -56,35 +63,27 @@ def list_fundamentals(
     period: Optional[str] = None,
     fiscal_year: Optional[int] = None,
     db: Session = Depends(get_db),
+    repo=Depends(get_fundamental_repo),
 ):
     """List fundamental data with optional filtering"""
-    query = db.query(FundamentalData)
-
-    if company_id:
-        query = query.filter(FundamentalData.company_id == company_id)
-
-    if period:
-        query = query.filter(FundamentalData.period == period)
-
-    if fiscal_year:
-        query = query.filter(FundamentalData.fiscal_year == fiscal_year)
-
-    return (
-        query.order_by(
-            FundamentalData.fiscal_year.desc(), FundamentalData.fiscal_quarter.desc()
-        )
-        .offset(skip)
-        .limit(limit)
-        .all()
+    return repo.get_filtered(
+        db,
+        company_id=company_id,
+        period=period,
+        fiscal_year=fiscal_year,
+        skip=skip,
+        limit=limit,
     )
 
 
 @router.get("/fundamentals/{fundamental_id}", response_model=FundamentalDataRead)
-def get_fundamental(fundamental_id: int, db: Session = Depends(get_db)):
+def get_fundamental(
+    fundamental_id: int,
+    db: Session = Depends(get_db),
+    repo=Depends(get_fundamental_repo),
+):
     """Get fundamental data by ID"""
-    fundamental = (
-        db.query(FundamentalData).filter(FundamentalData.id == fundamental_id).first()
-    )
+    fundamental = repo.get(db, id=fundamental_id)
     if not fundamental:
         raise HTTPException(status_code=404, detail="Fundamental data not found")
 
@@ -99,26 +98,16 @@ def get_company_fundamentals(
     period: Optional[str] = None,
     limit: int = 8,
     db: Session = Depends(get_db),
+    fundamental_repo=Depends(get_fundamental_repo),
+    company_repo=Depends(get_company_repo),
 ):
     """Get fundamental data for a specific company"""
     # Check if company exists
-    company = db.query(Company).filter(Company.id == company_id).first()
+    company = company_repo.get(db, id=company_id)
     if not company:
         raise HTTPException(status_code=404, detail="Company not found")
 
-    # Build query
-    query = db.query(FundamentalData).filter(FundamentalData.company_id == company_id)
-
-    if period:
-        query = query.filter(FundamentalData.period == period)
-
-    # Get fundamental data ordered by most recent first
-    fundamentals = (
-        query.order_by(
-            FundamentalData.fiscal_year.desc(), FundamentalData.fiscal_quarter.desc()
-        )
-        .limit(limit)
-        .all()
+    # Get fundamental data
+    return fundamental_repo.get_by_company(
+        db, company_id=company_id, period=period, limit=limit
     )
-
-    return fundamentals
