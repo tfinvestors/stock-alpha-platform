@@ -72,5 +72,13 @@ class Backtest(Base):
     trades = Column(JSON)  # List of trade details
     equity_curve = Column(JSON)  # Daily equity values
 
+    __table_args__ = (
+        Index("idx_strategy_type", "strategy_type"),
+        Index("idx_total_return", "total_return"),
+        Index("idx_created_at", "created_at"),  # Additional index for sorting
+        # Composite index for common filtering pattern
+        Index("idx_strategy_return", "strategy_type", "total_return"),
+    )
+
     # Metadata
     created_by = Column(String(100))
