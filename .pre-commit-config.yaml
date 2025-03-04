@@ -23,4 +23,4 @@ repos:
     - id: mypy
       additional_dependencies:
         - types-PyYAML
-      args: ["--python-version=3.11", "--python-executable=python", "--namespace-packages"]
+      args: ["--python-version=3.11", "--python-executable=python", "--namespace-packages", "--explicit-package-bases"]

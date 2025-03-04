@@ -10,6 +10,13 @@ from pydantic import BaseSettings, PostgresDsn
 class Settings(BaseSettings):
     """Application settings"""
 
+    # API settings
+    api_title: str = "Stock Alpha API"
+    api_description: str = "API for Stock Alpha Platform"
+    api_v1_prefix: str = "/api/v1"
+    api_host: str = "0.0.0.0"
+    api_port: int = 8000
+
     # Database settings
     database_url: PostgresDsn
     db_echo: bool = False
