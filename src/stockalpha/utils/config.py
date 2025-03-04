@@ -4,11 +4,16 @@ from functools import lru_cache
 from typing import Any, Dict, Optional
 
 import yaml
-from pydantic import BaseSettings, PostgresDsn
+from pydantic import PostgresDsn
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
     """Application settings"""
+
+    # Logging settings
+    environment: str = "development"
+    log_level: str = "INFO"
 
     # API settings
     api_title: str = "Stock Alpha API"

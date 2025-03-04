@@ -5,7 +5,7 @@ from typing import Type, TypeVar
 from stockalpha.repositories.announcement_repository import AnnouncementRepository
 from stockalpha.repositories.backtest_repository import BacktestRepository
 from stockalpha.repositories.base_repository import BaseRepository
-from stockalpha.repositories.company_repository import CompanyRepository
+from stockalpha.repositories.company import CompanyRepository
 from stockalpha.repositories.fundamental_data_repository import (
     FundamentalDataRepository,
 )

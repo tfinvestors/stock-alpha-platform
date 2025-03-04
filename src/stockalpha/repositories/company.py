@@ -8,9 +8,7 @@ from stockalpha.models.entities import Company
 from stockalpha.repositories.base_repository import BaseRepository
 
 
-class CompanyRepository(
-    BaseRepository[Company, CompanyCreate, CompanyUpdate, CompanyRead]
-):
+class CompanyRepository(BaseRepository[Company, CompanyCreate, CompanyUpdate]):
     """Repository for Company model"""
 
     def __init__(self):

@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 # Create engine
 engine = create_engine(
-    settings.database_url,
+    str(settings.database_url),
     pool_pre_ping=True,
     echo=settings.db_echo,
 )

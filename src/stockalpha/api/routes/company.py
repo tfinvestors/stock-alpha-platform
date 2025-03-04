@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from stockalpha.api.schemas import CompanyCreate, CompanyRead
 from stockalpha.repositories import get_repository
-from stockalpha.repositories.company_repository import CompanyRepository
+from stockalpha.repositories.company import CompanyRepository
 from stockalpha.utils.database import get_db
 
 router = APIRouter()

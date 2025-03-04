@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from stockalpha.api.schemas import SignalCreate, SignalRead
 from stockalpha.repositories import get_repository
-from stockalpha.repositories.company_repository import CompanyRepository
+from stockalpha.repositories.company import CompanyRepository
 from stockalpha.repositories.signal_repository import SignalRepository
 from stockalpha.utils.database import get_db
 

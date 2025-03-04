@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from stockalpha.api.schemas import AnnouncementCreate, AnnouncementRead
 from stockalpha.repositories import get_repository
 from stockalpha.repositories.announcement_repository import AnnouncementRepository
-from stockalpha.repositories.company_repository import CompanyRepository
+from stockalpha.repositories.company import CompanyRepository
 from stockalpha.utils.database import get_db
 
 router = APIRouter()
